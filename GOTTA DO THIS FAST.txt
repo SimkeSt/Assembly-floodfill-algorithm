@@ -1,0 +1,291 @@
+JMP main
+    
+    isr: ; this is from second exercise from 12th exercise session
+    PUSH A ; Store the registers that ISR uses.
+    IN 6 ; Read the pressed key symbol.
+    MOVB CL, AL ; Write the symbol to text display.
+    JMP nignog
+    nexte:
+    MOV A, 1 ; Set the first bit to clear the interrupt.
+    OUT 2 ; Clear the interrupt (A -> IRQEOI).
+    POP A ; Restore registers to their original values.
+    IRET ; Return from interrupt.
+    
+    nignog: 
+    CMPB CH,1 ;checks which area is selected
+    JE nignog3
+    CMPB CH,0
+    JE nignog2
+    nignog3:
+    MOVB AH,5 ;selects circle
+    MOVB AL,5
+    JMP here
+    nignog2:
+    MOVB AH,1 ;selects area around cicrle
+    MOVB AL,1
+    JMP here
+    here:
+    CALL get_pixel
+    CMPB CL,49
+    JE this1 ;this checks which keyboard input is selected 49 is 1 and +48 on every num;
+    CMPB CL,50
+    JE this2
+    CMPB CL,51
+    JE this3
+    CMPB CL,52
+    JE this4
+    CMPB CL,53
+    JE this5
+    CMPB CL,54
+    JE this6
+    CMPB CL,55
+    JE this7
+    CMPB CL,56
+    JE this8
+    CMPB CL,57
+    JE this9
+    CMPB CL,42
+    JE this10 ;these two are * and +
+    CMPB CL,43
+    JE this11
+    JMP nexte
+    
+    this1:
+    MOVB BH, 152 ;when you press 9 it paints to this color(grass green)
+    CMPB BH,[A] ;checks whether is this color is already selected(without this check it would spin to infinity)
+    JE nexte ;same color, yes go back
+    MOVB [A],BH ;paint and call floodfill
+    CALL floodfill1
+    JMP nexte
+    
+    this2:
+    MOVB BH, 222
+    CMPB BH,[A] ;this is same as above
+    JE nexte
+    MOVB [A],BH
+    CALL floodfill1
+    JMP nexte
+    
+    this3:
+    MOVB BH, 50
+    CMPB BH,[A] ;this also
+    JE nexte
+    MOVB [A],BH
+    CALL floodfill1
+    JMP nexte
+    
+    this4:
+    MOVB BH, 20
+    CMPB BH,[A]
+    JE nexte
+    MOVB [A],BH
+    CALL floodfill1
+    JMP nexte
+    
+    this5:
+    MOVB BH, 250
+    CMPB BH,[A]
+    JE nexte
+    MOVB [A],BH
+    CALL floodfill1
+    JMP nexte
+    
+    this6:
+    MOVB BH, 111
+    CMPB BH,[A]
+    JE nexte
+    MOVB [A],BH
+    CALL floodfill1
+    JMP nexte
+    
+    this7:
+    MOVB BH, 12
+    CMPB BH,[A]
+    JE nexte
+    MOVB [A],BH
+    CALL floodfill1
+    JMP nexte
+    
+    this8:
+    MOVB BH, 230
+    CMPB BH,[A]
+    JE nexte
+    MOVB [A],BH
+    CALL floodfill1
+    JMP nexte
+    
+    this9:
+    MOVB BH, 60 ;when you press 9 it paints to this color(green)
+    CMPB BH,[A] 
+    JE nexte
+    MOVB [A],BH
+    CALL floodfill1
+    JMP nexte
+    
+    this10:
+    MOVB CH,1 ;now im not sure which is * and which is + but 1 is flag for one of them
+    JMP nexte
+    
+    this11:
+    MOVB CH,0 ;and 0 is flag for other
+    JMP nexte
+
+circle:
+    DB "\x15\x16\x17\x18\x19\xd5\xd6\xd7\xd8\xd9"
+    DB "\x51\x61\x71\x81\x91\x5d\x6d\x7d\x8d\x9d"
+    DB "\x24\x33\x42\x2a\x3b\x4c"
+    DB "\xa2\xb3\xc4\xca\xbb\xac"
+    
+   
+main:
+
+    MOV SP, 0x0EDF 
+    MOV D, 0x0F00 ;stack pointer and field
+    CALL bg ;paint background
+    donkey1:
+    MOVB AH,5
+    MOVB AL,5 ;choosing inside starting points in field
+    CALL get_pixel
+    MOVB BH, 140 ;some color idk which one
+    MOVB [A],BH
+    CALL floodfill1
+    donkey2:
+    MOVB AH,1
+    MOVB AL,1 ;outside starting point
+    CALL get_pixel
+    MOVB BH, 220 ;painting color to A
+    MOVB [A],BH
+    CALL floodfill1
+    MOV A,0
+MOV A, 1 ; Set the first bit to enable keyboard interrupts.
+OUT 0 ; Enable keyboard interrupts (A -> IRQMASK).
+STI ; Enable interrupts globally (M = 1).
+HLT ; Halt and let interrupts do the rest.
+   
+    
+    
+bg:
+    CMP D, 0x0FFF
+    JA draw_circle
+    MOVB [D], 255 
+    INC D
+    JMP bg
+draw_circle:
+    MOV A, 31 ;assisstants code starting code that I was sent
+circle_loop:
+    MOV C, circle
+    ADD C, A
+    MOV D, 0x0F00
+    ADDB DL, [C]
+    MOVB [D], 0
+    DEC A
+    JNC circle_loop
+    RET
+    
+    floodfill1:
+    MOV D, 0x0F00 ;field to d
+    floodfill:
+    CMP D, display_end
+    JA arbeitende ;end to end
+    CMPB BH,[D]
+    JNE kamenolom
+    CALL lijevo ;Calling directions
+    CALL dolje
+    CALL gore
+    CALL desno    
+    kamenolom:
+    INC D ;next slot
+    JMP floodfill
+    arbeitende:
+    RET
+        
+    dolje: ; down from starting point when filling, will fill untill reaching end of bounds or not target color
+    MOV A,0
+    ADD D,16 ; A is used for countering movement of left searching
+    ADD A,16
+    dolje1:
+    CMP D,display_end
+    JA donzo
+    CMPB BL,[D] ; how far to color
+    JNE donzo
+    MOVB [D],BH
+    ADD D,16
+    ADD A,16
+    JMP dolje1
+    donzo:
+    SUB D,A ; countering movement
+    RET
+    
+    gore: ; up from starting point when filling, will fill untill reaching end of bounds or not target color
+    MOV A,0
+    SUB D,16 ; A is used for countering movement of left searching
+    ADD A,16
+    gore1:
+    CMP D,display_end
+    JA donzo1
+    CMPB BL,[D]
+    JNE donzo1
+    MOVB [D],BH
+    SUB D,16
+    ADD A,16
+    JMP gore1
+    donzo1: 
+    ADD D,A ; countering movement
+    RET
+    
+    desno: ; right from starting point when filling, will fill untill reaching end of bounds or not target color
+    MOV A,0
+    INC D ; A is used for countering movement of left searching
+    INC A
+    desno1:
+    CMP D,display_end
+    JA donzo2
+    CMPB BL,[D]
+    JNE donzo2 ; how far to color
+    MOVB [D],BH
+    CALL dolje
+    INC D
+    INC A
+    JMP desno1
+    donzo2:
+    SUB D,A ; countering movement
+    RET
+    
+    lijevo: ; left from starting point when filling, will fill untill reaching end of bounds or not target color
+    MOV A,0 
+    DEC D ; A is used for countering movement of left searching
+    INC A
+    lijevo1:
+    CMP D,display_end
+    JA donzo3
+    CMPB BL,[D] ; how far to color
+    JNE donzo3
+    MOVB [D],BH
+    INC A
+    DEC D
+    JMP lijevo1
+    donzo3:
+    ADD D,A ; countering movement
+    RET
+    
+    
+    
+    get_pixel:
+    CALL get_pixel_address ; Get the memory address of the received pixel.
+    MOVB BL, [A] Get the color of that pixel.
+    RET
+    
+    get_pixel_address:
+    MOV B, 0 ; Clear B.
+    MOVB BL, AH ; Make a backup of value x in BL.
+    MOVB AH, 0 ; Clear AH so A contains the value y.
+    MUL 16 ; Compute the starting memory address of line y.
+    ADD A,B ;Ae number of columns x.
+    ADD A, display_start ; Make it relative to display memory address.
+    RET
+
+org 0x0F00
+display_start: ;"Landmarks" wheres start and wheres end
+org 0x0FFF
+display_end:
+
